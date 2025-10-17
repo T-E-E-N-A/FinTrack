@@ -10,7 +10,8 @@
     "email": "email dev",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
-    "setup": "pnpm install && pnpm prisma:generate"
+    "setup": "pnpm install && pnpm prisma:generate",
+    "postinstall" : "prisma generate"
   },
   "dependencies": {
     "@arcjet/next": "^1.0.0-alpha.34",
