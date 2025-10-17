@@ -14,9 +14,9 @@ const aj = arcjet({
   // characteristics: ["userId"], // Track based on Clerk userId
   rules: [
     // Shield protection for content and security
-    shield({
-      mode: "LIVE",
-    }),
+    // shield({
+    //   mode: "DRY_RUN",
+    // }),
     detectBot({
       mode: "DRY_RUN", // will block requests. Use "DRY_RUN" to log only
       allow: [
