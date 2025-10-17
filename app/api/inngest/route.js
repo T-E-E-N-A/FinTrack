@@ -1,4 +1,5 @@
 import { serve } from "inngest/next";
+import arcjet, { shield } from "@arcjet/next";
 
 import { inngest } from "@/lib/inngest/client";
 import {
@@ -8,7 +9,18 @@ import {
   triggerRecurringTransactions,
 } from "@/lib/inngest/function";
 
-export const { GET, POST, PUT } = serve({
+export const runtime = "nodejs";
+
+const aj = arcjet({
+  key: process.env.ARCJET_KEY,
+  rules: [
+    shield({
+      mode: "LIVE",
+    }),
+  ],
+});
+
+const handlers = serve({
   client: inngest,
   functions: [
     processRecurringTransaction,
@@ -17,3 +29,27 @@ export const { GET, POST, PUT } = serve({
     checkBudgetAlerts,
   ],
 });
+
+export async function GET(req, ctx) {
+  const decision = await aj.protect(req);
+  if (decision.isDenied()) {
+    return Response.json({ error: "Request blocked" }, { status: 403 });
+  }
+  return handlers.GET(req, ctx);
+}
+
+export async function POST(req, ctx) {
+  const decision = await aj.protect(req);
+  if (decision.isDenied()) {
+    return Response.json({ error: "Request blocked" }, { status: 403 });
+  }
+  return handlers.POST(req, ctx);
+}
+
+export async function PUT(req, ctx) {
+  const decision = await aj.protect(req);
+  if (decision.isDenied()) {
+    return Response.json({ error: "Request blocked" }, { status: 403 });
+  }
+  return handlers.PUT(req, ctx);
+}

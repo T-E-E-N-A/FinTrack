@@ -1,4 +1,4 @@
-import arcjet, { createMiddleware, detectBot, shield } from "@arcjet/next";
+import arcjet, { detectBot } from "@arcjet/next";
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 
@@ -18,7 +18,7 @@ const aj = arcjet({
     //   mode: "DRY_RUN",
     // }),
     detectBot({
-      mode: "DRY_RUN", // will block requests. Use "DRY_RUN" to log only
+      mode: "LIVE", // will block requests. Use "DRY_RUN" to log only
       allow: [
         "CATEGORY:SEARCH_ENGINE", // Google, Bing, etc
         "GO_HTTP", // For Inngest
@@ -30,6 +30,11 @@ const aj = arcjet({
 
 // Create base Clerk middleware
 const clerk = clerkMiddleware(async (auth, req) => {
+  const decision = await aj.protect(req);
+  if (decision.isDenied()) {
+    return NextResponse.json({ error: "Request blocked" }, { status: 403 });
+  }
+
   const { userId } = await auth();
 
   if (!userId && isProtectedRoute(req)) {
@@ -41,7 +46,7 @@ const clerk = clerkMiddleware(async (auth, req) => {
 });
 
 // Chain middlewares - ArcJet runs first, then Clerk
-export default createMiddleware(aj, clerk);
+export default clerk;
 
 export const config = {
   matcher: [
