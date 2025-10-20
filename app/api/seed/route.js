@@ -1,13 +1,17 @@
 import { seedTransactions } from "@/actions/seed";
-import arcjet, { shield } from "@arcjet/next";
+import arcjet, { detectBot } from "@arcjet/next";
 
 export const runtime = "nodejs";
 
 const aj = arcjet({
   key: process.env.ARCJET_KEY,
   rules: [
-    shield({
+    detectBot({
       mode: "LIVE",
+      allow: [
+        "CATEGORY:SEARCH_ENGINE", // Google, Bing, etc
+        "GO_HTTP", // Inngest/Go clients if any
+      ],
     }),
   ],
 });

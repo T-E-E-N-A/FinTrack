@@ -1,5 +1,5 @@
 import { serve } from "inngest/next";
-import arcjet, { shield } from "@arcjet/next";
+import arcjet, { detectBot } from "@arcjet/next";
 
 import { inngest } from "@/lib/inngest/client";
 import {
@@ -14,8 +14,12 @@ export const runtime = "nodejs";
 const aj = arcjet({
   key: process.env.ARCJET_KEY,
   rules: [
-    shield({
+    detectBot({
       mode: "LIVE",
+      allow: [
+        "CATEGORY:SEARCH_ENGINE", // Google, Bing, etc
+        "GO_HTTP", // For Inngest
+      ],
     }),
   ],
 });
