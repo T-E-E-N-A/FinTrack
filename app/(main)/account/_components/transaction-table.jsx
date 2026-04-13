@@ -355,7 +355,7 @@ export function TransactionTable({ transactions }) {
                       onCheckedChange={() => handleSelect(transaction.id)}
                     />
                   </TableCell>
-                  <TableCell>
+                  <TableCell suppressHydrationWarning>
                     {format(new Date(transaction.date), "PP")}
                   </TableCell>
                   <TableCell>{transaction.description}</TableCell>
@@ -397,7 +397,7 @@ export function TransactionTable({ transactions }) {
                               }
                             </Badge>
                           </TooltipTrigger>
-                          <TooltipContent>
+                          <TooltipContent suppressHydrationWarning>
                             <div className="text-sm">
                               <div className="font-medium">Next Date:</div>
                               <div>

@@ -228,14 +228,12 @@ export async function getUserTransactions(query = {}) {
 }
 
 // Scan Receipt
-export async function scanReceipt(file) {
+export async function scanReceipt(fileData, mimeType) {
   try {
     const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
-    // Convert File to ArrayBuffer
-    const arrayBuffer = await file.arrayBuffer();
-    // Convert ArrayBuffer to Base64
-    const base64String = Buffer.from(arrayBuffer).toString("base64");
+    // fileData is already a Buffer or base64 string from client
+    const base64String = typeof fileData === "string" ? fileData : Buffer.from(fileData).toString("base64");
 
     const prompt = `
       Analyze this receipt image and extract the following information in JSON format:
@@ -261,7 +259,7 @@ export async function scanReceipt(file) {
       {
         inlineData: {
           data: base64String,
-          mimeType: file.type,
+          mimeType: mimeType || "image/jpeg",
         },
       },
       prompt,

@@ -22,7 +22,13 @@ export function ReceiptScanner({ onScanComplete }) {
       return;
     }
 
-    await scanReceiptFn(file);
+    // Convert file to base64
+    const reader = new FileReader();
+    reader.onload = async () => {
+      const base64String = reader.result.split(",")[1]; // Remove data:image/...;base64, prefix
+      await scanReceiptFn(base64String, file.type);
+    };
+    reader.readAsDataURL(file);
   };
 
   useEffect(() => {

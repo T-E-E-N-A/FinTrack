@@ -116,7 +116,7 @@ export function DashboardOverview({ accounts, transactions }) {
                     <p className="text-sm font-medium leading-none">
                       {transaction.description || "Untitled Transaction"}
                     </p>
-                    <p className="text-sm text-muted-foreground">
+                    <p className="text-sm text-muted-foreground" suppressHydrationWarning>
                       {format(new Date(transaction.date), "PP")}
                     </p>
                   </div>

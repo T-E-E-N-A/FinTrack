@@ -233,6 +233,7 @@ export function AddTransactionForm({
                 "w-full pl-3 text-left font-normal",
                 !date && "text-muted-foreground"
               )}
+              suppressHydrationWarning
             >
               {date ? format(date, "PPP") : <span>Pick a date</span>}
               <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
