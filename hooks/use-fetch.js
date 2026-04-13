@@ -15,8 +15,17 @@ const useFetch = (cb) => {
       setData(response);
       setError(null);
     } catch (error) {
+      // Extract error message safely
+      const errorMessage = error?.message || "An unexpected error occurred. Please try again.";
       setError(error);
-      toast.error(error.message);
+      
+      // Log error for debugging in development
+      if (process.env.NODE_ENV === "development") {
+        console.error("useFetch error:", { message: errorMessage, error });
+      }
+      
+      // Show user-friendly error message
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }

@@ -230,6 +230,42 @@ export async function getUserTransactions(query = {}) {
 // Scan Receipt
 export async function scanReceipt(fileData, mimeType) {
   try {
+    // Verify authentication
+    const { userId } = await auth();
+    if (!userId) {
+      throw new Error("Unauthorized");
+    }
+
+    // Get request data for ArcJet rate limiting
+    const req = await request();
+
+    // Check rate limit (allow 10 receipt scans per window)
+    const decision = await aj.protect(req, {
+      userId,
+      requested: 1,
+    });
+
+    if (decision.isDenied()) {
+      if (decision.reason.isRateLimit()) {
+        const { remaining, reset } = decision.reason;
+        console.error({
+          code: "RECEIPT_SCAN_RATE_LIMIT",
+          details: {
+            remaining,
+            resetInSeconds: reset,
+          },
+        });
+        throw new Error("Too many receipt scans. Please try again later.");
+      }
+      throw new Error("Receipt scan request blocked");
+    }
+
+    // Validate API key
+    if (!process.env.GEMINI_API_KEY) {
+      console.error("GEMINI_API_KEY is not configured");
+      throw new Error("AI service is temporarily unavailable");
+    }
+
     const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
     // fileData is already a Buffer or base64 string from client
@@ -255,36 +291,70 @@ export async function scanReceipt(fileData, mimeType) {
       If its not a recipt, return an empty object
     `;
 
-    const result = await model.generateContent([
-      {
-        inlineData: {
-          data: base64String,
-          mimeType: mimeType || "image/jpeg",
-        },
-      },
-      prompt,
-    ]);
-
-    const response = await result.response;
-    const text = response.text();
-    const cleanedText = text.replace(/```(?:json)?\n?/g, "").trim();
+    // Add timeout for Gemini API call (30 seconds)
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000);
 
     try {
-      const data = JSON.parse(cleanedText);
-      return {
-        amount: parseFloat(data.amount),
-        date: new Date(data.date),
-        description: data.description,
-        category: data.category,
-        merchantName: data.merchantName,
-      };
-    } catch (parseError) {
-      console.error("Error parsing JSON response:", parseError);
-      throw new Error("Invalid response format from Gemini");
+      const result = await model.generateContent([
+        {
+          inlineData: {
+            data: base64String,
+            mimeType: mimeType || "image/jpeg",
+          },
+        },
+        prompt,
+      ]);
+
+      clearTimeout(timeoutId);
+
+      const response = await result.response;
+      const text = response.text();
+      const cleanedText = text.replace(/```(?:json)?\n?/g, "").trim();
+
+      // Handle empty response (not a receipt)
+      if (!cleanedText || cleanedText === "{}") {
+        throw new Error("Failed to recognize receipt. Please ensure the image is clear and shows a valid receipt.");
+      }
+
+      try {
+        const data = JSON.parse(cleanedText);
+        
+        // Validate parsed data
+        if (!data.amount || !data.date) {
+          throw new Error("Receipt data incomplete. Could not extract amount or date.");
+        }
+
+        return {
+          amount: parseFloat(data.amount),
+          date: new Date(data.date),
+          description: data.description || "Receipt",
+          category: data.category || "other-expense",
+          merchantName: data.merchantName || "Unknown Merchant",
+        };
+      } catch (parseError) {
+        console.error("Error parsing Gemini response:", {
+          error: parseError.message,
+          responseText: text.substring(0, 200),
+          userId,
+        });
+        throw new Error("Could not parse receipt data. Please try again with a different image.");
+      }
+    } catch (timeoutError) {
+      clearTimeout(timeoutId);
+      if (timeoutError.name === "AbortError") {
+        console.error("Gemini API timeout for userId:", userId);
+        throw new Error("Receipt scan timed out. Please try again.");
+      }
+      throw timeoutError;
     }
   } catch (error) {
-    console.error("Error scanning receipt:", error);
-    throw new Error("Failed to scan receipt");
+    console.error("Error scanning receipt:", {
+      message: error.message,
+      stack: error.stack,
+      timestamp: new Date().toISOString(),
+    });
+    throw error;
   }
 }
 
